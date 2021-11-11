@@ -19,6 +19,7 @@
 
 #include "dataStructures.h"
 
+#define CV_VERSION_4_5_4
 
 void detKeypointsHarris(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool bVis=false);
 void detKeypointsShiTomasi(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool bVis=false);
