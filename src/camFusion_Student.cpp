@@ -5,6 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include <pcl/segmentation/extract_clusters.h>
 #include "camFusion.hpp"
 #include "dataStructures.h"
 
@@ -153,11 +154,38 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+    auto prvCloud = pcl    
 }
 
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    map<vector<int>, int> b2bmatchCounts;
+    for(auto& match : matches){
+        auto prvFramePoint = prevFrame.keypoints[match.queryIdx].pt;
+        auto currFramePoint = currFrame.keypoints[match.queryIdx].pt;
+
+        for(auto prvFrameBox : prevFrame.boundingBoxes){
+            if(prvFrameBox.roi.contains(prvFramePoint)){
+                for(auto currFrameBox : currFrame.boundingBoxes){
+                    b2bmatchCounts[{prvFrameBox.boxID, currFrameBox.boxID}]++;
+                }
+            }
+        }
+    }
+
+    for(auto itr = b2bmatchCounts.begin(); itr != b2bmatchCounts.end(); ++itr){
+        int prvBox = -1;
+        int count = -1;
+        for(auto itr2 = itr->first.begin(); itr2 != itr->first.end(); ++itr2){
+            if(itr2[1] > count){
+                count = itr->second;
+                prvBox = itr2[0];
+            }
+        }
+
+        if(prvBox > -1){
+            bbBestMatches[prvBox] = itr->first[0];
+        }
+    }
 }
