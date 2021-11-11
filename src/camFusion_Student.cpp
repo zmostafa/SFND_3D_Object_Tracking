@@ -6,6 +6,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <pcl/segmentation/extract_clusters.h>
+
 #include "camFusion.hpp"
 #include "dataStructures.h"
 
@@ -150,11 +151,52 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
     // ...
 }
 
+// remove outliers
+pcl::PointCloud<pcl::PointXYZ>::Ptr euclidanClustering(std::vector<LidarPoint> &lidarPoints){
+    
+    pcl::PointCloud<pcl::PointXYZ>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZ>());
+    pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud(new pcl::PointCloud<pcl::PointXYZ>());
+    for(auto lidarPoint : lidarPoints){
+        inputCloud->push_back(pcl::PointXYZ((float)lidarPoint.x, (float)lidarPoint.y, (float)lidarPoint.z));
+    }
+    //  Create Kd-Tree for neighbour points search
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr searchTree(new pcl::search::KdTree<pcl::PointXYZ>());
+    searchTree->setInputCloud(inputCloud);
 
+    vector<pcl::PointIndices> indices;
+    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ecuClustering;
+    ecuClustering.setInputCloud(inputCloud);
+    ecuClustering.setSearchMethod(searchTree);
+    ecuClustering.setMinClusterSize(4);
+    ecuClustering.setClusterTolerance(0.05);
+    ecuClustering.extract(indices);
+
+    for(auto indice : indices){
+        for(auto index : indice.indices){
+            outputCloud->points.push_back(inputCloud->points[index]);
+        }
+    }
+
+    return outputCloud;
+
+}
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    auto prvCloud = pcl    
+    auto prvCloud = euclidanClustering(lidarPointsPrev);
+    auto currCloud = euclidanClustering(lidarPointsCurr);
+
+    float minPrv = prvCloud->points[0].x;
+    for(auto point : prvCloud->points){
+        minPrv = min(minPrv, point.x);
+    }   
+
+    float minCurr = currCloud->points[0].x;
+    for(auto point : currCloud->points){
+        minCurr = min(minCurr, point.x);
+    }
+
+    TTC = minCurr * (1 / frameRate) / (minPrv - minCurr); 
 }
 
 
