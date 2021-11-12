@@ -140,7 +140,13 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+    for(auto kptmatch : kptMatches){
+        auto currIndex = kptmatch.trainIdx;
+        if(boundingBox.roi.contains(kptsCurr[currIndex].pt)){
+            boundingBox.kptMatches.push_back(kptmatch);
+        }
+
+    }
 }
 
 
@@ -148,7 +154,39 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, 
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
-    // ...
+    constexpr double minDistance = 100.0;
+    vector<double> disRatios;
+
+    for(auto itr = kptMatches.begin(); itr != kptMatches.end(); ++itr){
+        auto kptCurr = kptsCurr.at(itr->trainIdx);
+        auto kptPrv = kptsPrev.at(itr->queryIdx);
+
+        for(auto itr2 = kptMatches.begin() + 1 ; itr2 != kptMatches.end(); ++itr2){
+            auto kptCurr2 = kptsCurr.at(itr2->trainIdx);
+            auto kptPrv2 = kptsPrev.at(itr2->queryIdx);
+
+            double distCurr = cv::norm(kptCurr.pt - kptCurr2.pt);
+            double distPrv = cv::norm(kptPrv.pt - kptPrv2.pt);
+
+            if(distPrv >= minDistance && distPrv > std::numeric_limits<double>::epsilon()){
+                disRatios.push_back(distCurr / distPrv);
+            }
+        }
+    }
+
+    if(disRatios.size() == 0){
+        TTC = NAN;
+        return;
+    }
+    sort(disRatios.begin(), disRatios.end());
+    double medianDistanceRatio;
+    if(disRatios.size() % 2 == 0){
+        medianDistanceRatio = (disRatios[disRatios.size() / 2] + disRatios[(disRatios.size() / 2) - 1]) / 2.0;
+    }else{
+        medianDistanceRatio = disRatios[disRatios.size() / 2];
+    }
+
+    TTC = (-1.0 / frameRate) / (1 - medianDistanceRatio);
 }
 
 // remove outliers
@@ -186,17 +224,21 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
     auto prvCloud = euclidanClustering(lidarPointsPrev);
     auto currCloud = euclidanClustering(lidarPointsCurr);
 
-    float minPrv = prvCloud->points[0].x;
-    for(auto point : prvCloud->points){
-        minPrv = min(minPrv, point.x);
-    }   
+    if(prvCloud->points.size() != 0 && currCloud->points.size() != 0){
+        float minPrv = prvCloud->points[0].x;
+        for(auto point : prvCloud->points){
+            minPrv = min(minPrv, point.x);
+        }   
 
-    float minCurr = currCloud->points[0].x;
-    for(auto point : currCloud->points){
-        minCurr = min(minCurr, point.x);
-    }
+        float minCurr = currCloud->points[0].x;
+        for(auto point : currCloud->points){
+            minCurr = min(minCurr, point.x);
+        }
 
-    TTC = minCurr * (1 / frameRate) / (minPrv - minCurr); 
+        TTC = minCurr * (1 / frameRate) / (minPrv - minCurr);
+    }else{
+        TTC = NAN;
+    } 
 }
 
 
