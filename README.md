@@ -33,3 +33,15 @@ In this final project, you will implement the missing parts in the schematic. To
 2. Make a build directory in the top level project directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./3D_object_tracking`.
+
+### FP.5 Performance Evaluation 1
+
+LiDAR Sensor becomes inaccurate after starting from frame number 48, as the car in front getting closer increasing the number of LiDAR points while the car speed is low, the noise level is increased producing faulty measurement.
+
+### FP.6 Performance Evaluation 2
+
+<img src="images/detec-desc.png" width="779" height="414" />
+From the image, measurements after frame 48 is not reliable, and best algorithms matches are: <br />
+FAST / FREAK <br />
+FAST / BRIEF <br />
+SIFT / BRIEF <br />
