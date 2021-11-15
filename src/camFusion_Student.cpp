@@ -137,16 +137,38 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
     }
 }
 
+double calcEuclideanDistance(cv::Point2f& point1, cv::Point2f& point2){
+    return sqrt(pow((point1.x - point2.x),2) + pow((point1.y - point2.y), 2));
+}
 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
+    vector<double> euclidanDistance; 
+    map<cv::DMatch, double> matchedDistance;
     for(auto kptmatch : kptMatches){
-        auto currIndex = kptmatch.trainIdx;
-        if(boundingBox.roi.contains(kptsCurr[currIndex].pt)){
-            boundingBox.kptMatches.push_back(kptmatch);
+        auto prevKpt = kptsPrev[kptmatch.queryIdx];
+        auto currKpt = kptsCurr[kptmatch.trainIdx];
+        if(boundingBox.roi.contains(currKpt.pt)){
+            auto dist = calcEuclideanDistance(prevKpt.pt, currKpt.pt);
+            euclidanDistance.push_back(dist);
+            matchedDistance[kptmatch] = dist; 
         }
 
+    }
+
+    sort(euclidanDistance.begin(), euclidanDistance.end());
+    double medianDistance ;
+    if(euclidanDistance.size() % 2 == 0){
+        medianDistance = (euclidanDistance[euclidanDistance.size() / 2] + euclidanDistance[(euclidanDistance.size() / 2) - 1]) / 2.0;
+    }else{
+        medianDistance = euclidanDistance[euclidanDistance.size() / 2];
+    }
+
+    for(auto& match : matchedDistance){
+        if(match.second >= medianDistance * 0.5 && match.second <= medianDistance * 1.50){
+            boundingBox.kptMatches.push_back(match.first);
+        }
     }
 }
 

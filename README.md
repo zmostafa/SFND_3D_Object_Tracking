@@ -34,14 +34,23 @@ In this final project, you will implement the missing parts in the schematic. To
 3. Compile: `cmake .. && make`
 4. Run it: `./3D_object_tracking`.
 
+## FP.0 Final Report
+### FP.1 Match 3D Objects
+`matchBoundingBoxes` uses a map datastructure to store the bounding box of previous and current frame Ids and count of matched points between frames. Using a std::set  to make sure that the bounding box is mapped only once we get our return value `bbBestMatches`
+### FP.2 Compute Lidar-based TTC
+`computeTTCLidar` does remove the outliers using the `Euclidean Clustering` algorithm from `PCL` library. Then using the equation mentioned earlier in the course TTC is calculated.
+### FP.3 Associate Keypoint Correspondences with Bounding Boxes
+`clusterKptMatchesWithROI` for every `kptMatch` the euclidean distance is calculated and stored in an std::vector,the vector is then sorted for finding out the `median` value, which is used to filter out the points +/- 50%.
+### FP.4 Compute Camera-based TTC
+`computeTTCCamera` uses two nested for loops that calculate the `distanceRation` for all possible "point pairs" of `kptMatches`. The result is stored in an std::vector that is then sorted , median value found and TTC is then calculated.
 ### FP.5 Performance Evaluation 1
 
-LiDAR Sensor becomes inaccurate after starting from frame number 48, as the car in front getting closer increasing the number of LiDAR points while the car speed is low, the noise level is increased producing faulty measurement.
-
+LiDAR Sensor becomes inaccurate starting from frame number 48, as the car in front getting closer increasing the number of LiDAR points while the car speed is low, the noise level is increased producing faulty measurement [as seen to the far left of the image].
+<img src="images/lidar.png" width="779" height="414" />
 ### FP.6 Performance Evaluation 2
 
 <img src="images/detec-desc.png" width="779" height="414" />
 From the image, measurements after frame 48 is not reliable, and best algorithms matches are: <br />
-FAST / FREAK <br />
 FAST / BRIEF <br />
+BRISK / BRIEF <br />
 SIFT / BRIEF <br />
