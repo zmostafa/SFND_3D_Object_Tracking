@@ -79,12 +79,13 @@ int main(int argc, const char *argv[])
     outCSV.open("TTC.csv", std::ios_base::app);
     outCSV << "Detector, Descriptor, Image No., LiDAR Points size,kpt Matches Size, LiDAR TTC, Camera TTC" << endl;
     /* MAIN LOOP OVER ALL IMAGES */
-    vector<string> detectors = {"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
-    vector<string> descriptors = {"BRIEF", "FREAK", "BRISK", "ORB", "AKAZE", "SIFT"};
+    vector<string> detectorsList = {"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+    vector<string> descriptorsList = {"BRIEF", "FREAK", "BRISK", "ORB", "AKAZE", "SIFT"};
 
-    for(auto detector : detectors){
-        for(auto descriptor : descriptors){
-            if((detector.compare("AKAZE") == 0 && descriptor.compare("AKAZE") != 0) || 
+    for(auto detector : detectorsList){
+        for(auto descriptor : descriptorsList){
+            if((detector.compare("SIFT") == 0 && descriptor.compare("ORB") == 0) ||
+                (detector.compare("AKAZE") == 0 && descriptor.compare("AKAZE") != 0) || 
                 (detector.compare("AKAZE") != 0 && descriptor.compare("AKAZE") == 0)){
                 continue;
             }
@@ -165,20 +166,20 @@ int main(int argc, const char *argv[])
 
                 // extract 2D keypoints from current image
                 vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-                string detectorType = detector; // {"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
+                // string detectorType = detector; // {"SHITOMASI", "HARRIS", "FAST", "BRISK", "ORB", "AKAZE", "SIFT"};
 
-                if (detectorType.compare("SHITOMASI") == 0)
+                if (detector.compare("SHITOMASI") == 0)
                 {
                     detKeypointsShiTomasi(keypoints, imgGray, false);
                 }
-                else if(detectorType.compare("HARRIS") == 0){
+                else if(detector.compare("HARRIS") == 0){
                     detKeypointsHarris(keypoints, imgGray, false);
                 }
                 else
                 {
                     try
                     {
-                        detKeypointsModern(keypoints, imgGray, detectorType, false);
+                        detKeypointsModern(keypoints, imgGray, detector, false);
                     }
                     catch(const std::exception& e)
                     {
@@ -187,12 +188,12 @@ int main(int argc, const char *argv[])
                 }
 
                 // optional : limit number of keypoints (helpful for debugging and learning)
-                bool bLimitKpts = true;
+                bool bLimitKpts = false;
                 if (bLimitKpts)
                 {
                     int maxKeypoints = 50;
 
-                    if (detectorType.compare("SHITOMASI") == 0)
+                    if (detector.compare("SHITOMASI") == 0)
                     { // there is no response info, so keep the first 50 as they are sorted in descending quality order
                         keypoints.erase(keypoints.begin() + maxKeypoints, keypoints.end());
                     }
@@ -209,8 +210,8 @@ int main(int argc, const char *argv[])
                 /* EXTRACT KEYPOINT DESCRIPTORS */
 
                 cv::Mat descriptors;
-                string descriptorType = descriptor; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
-                descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
+                // string descriptorType = descriptor; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+                descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptor);
 
                 // push descriptors for current frame to end of data buffer
                 (dataBuffer.end() - 1)->descriptors = descriptors;
@@ -225,7 +226,7 @@ int main(int argc, const char *argv[])
 
                     vector<cv::DMatch> matches;
                     string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
-                    string descriptorType = (descriptorType.compare("SIFT") == 0) ? "DES_HOG" : "DES_BINARY"; // DES_BINARY, DES_HOG
+                    string descriptorType = (descriptor.compare("SIFT") == 0) ? "DES_HOG" : "DES_BINARY"; // DES_BINARY, DES_HOG
                     string selectorType = "SEL_KNN";       // SEL_NN, SEL_KNN
 
                     matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
@@ -314,13 +315,10 @@ int main(int argc, const char *argv[])
                             outCSV << detector << "," << descriptor << "," << imgIndex << "," << currBB->lidarPoints.size() << "," << currBB->kptMatches.size() << "," << ttcLidar << "," << ttcCamera << endl;
                         } // eof TTC computation
                     } // eof loop over all BB matches            
-
                 }
-
             } // eof loop over all images
             dataBuffer.clear();
-        }
-        
+        } 
     }       
     outCSV.close();
     return 0;
